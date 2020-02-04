@@ -4,53 +4,60 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using Entities;
 
 namespace ServerBLL
 {
     public class ConnectedClient
     {
-        private TcpClient client;
+        private TcpClient connection;
         private NetworkStream stream;
+        internal Client clientInfo;
 
-        internal ConnectedClient(TcpClient client)
+        internal ConnectedClient(TcpClient tcpClient, Client clientInfo)
         {
-            this.client = client;
+            this.connection = tcpClient;
+            this.clientInfo = clientInfo;
         }
 
         public event Action<string, ConnectedClient> OnGetMessage = (s, cc) => { };
 
-        internal void ConnectAsync()
+        internal void Connect()
         {
-            stream = client.GetStream();
-
-            while (true)
+            Task.Factory.StartNew(() =>
             {
-                byte[] data = new byte[256];
-                StringBuilder response = new StringBuilder(); 
-
-                do
+                stream = connection.GetStream();
+                while (true)
                 {
-                    int bytes = stream.Read(data, 0, data.Length);
-                    response.Append(Encoding.UTF8.GetString(data, 0, bytes));
-                } while (stream.DataAvailable);
+                    byte[] data = new byte[256];
+                    var response = new StringBuilder();
 
-                OnGetMessage.Invoke(response.ToString(), this);
-            }
-        }
+                    do
+                    {
+                        int bytes = stream.Read(data, 0, data.Length);
+                        if (bytes == 0)
+                        {
+                            stream.Close();
+                            OnGetMessage.Invoke("Client is down", this);
+                            return;
+                        }
+                        response.Append(Encoding.UTF8.GetString(data, 0, bytes));
+                    } while (stream.DataAvailable);
 
-        public async void SendMessage(byte[] message)
-        {
-            await Task.Factory.StartNew(() =>
-            {
-                stream.WriteAsync(message, 0, message.Length).ConfigureAwait(false);
+                    OnGetMessage.Invoke(response.ToString(), this);
+                }
             });
         }
 
+        internal async void SendMessage(byte[] message)
+        {
+            await stream.WriteAsync(message, 0, message.Length).ConfigureAwait(false);
+        }
 
         internal void Disconnect()
         {
             stream.Close();
-            client.Close();
+            connection.Close();
         }
     }
 }
