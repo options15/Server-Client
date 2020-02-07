@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ServerBLL
+namespace ClientBLL
 {
     public class Subscription
     {
-        public Action<object[]> OnTrigger;
+        public event Action<object[]> Data;
 
         internal Subscription() {}
 
-        internal void DoEvent( params object[] obj )
+        internal void Invoke( params object[] obj )
         {
-            OnTrigger.Invoke(obj);
+            Data.Invoke(obj);
         }
     }
 }

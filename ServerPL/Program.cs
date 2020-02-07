@@ -9,7 +9,7 @@ namespace ServerPL
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             ServerBL server = new ServerBL();
             server.OnGetMessgeFromClient += ShowMessage;
@@ -20,6 +20,10 @@ namespace ServerPL
         static void ShowMessage(string message)
         {
             Console.WriteLine(message);
+        }
+        static void ShowMessage(object[] obj)
+        {
+            Console.WriteLine(obj[0].ToString());
         }
     }
 }

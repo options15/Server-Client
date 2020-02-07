@@ -10,10 +10,13 @@ namespace Entities
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public string Login { get; set; }
+        public string Password { get; set; }
 
-        public Client(string Name = "")
+        public Client(string Login, string Password)
         {
-            this.Name = Name;
+            this.Login = Login;
+            this.Password = Password;
         }
     }
 }

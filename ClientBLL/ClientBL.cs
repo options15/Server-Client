@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,50 +10,47 @@ namespace ClientBLL
     public class ClientBL
     {
         private TcpClient tcpClient;
-        private const string localIP = "127.0.0.1";
-        private const int defaultPort = 5050;
+        private string ip;
+        private int port;
         private NetworkStream stream;
-        private string name;
+        private Dictionary<string, Subscription> subscriptions;
 
-        public Action<string> OnGetMessage;
-        public ClientBL(string name)
+        public ClientBL(string ip, int port)
         {
-            this.name = name;
+            this.ip = ip;
+            this.port = port;
             tcpClient = new TcpClient();
+            subscriptions = new Dictionary<string, Subscription>();
         }
-        public  void Connect(string ip = localIP, int port = defaultPort)
+        public void Connect(string login, string password, bool isRegistered = true)
         {
             tcpClient.Connect(ip, port);
 
-            if (tcpClient.Connected)
-            {
-                Console.WriteLine("Подключено.");
-            }
             stream = tcpClient.GetStream();
+            var method = isRegistered ? "SignIn" : "Registration";
+            Send(method, "Server", login, password);
             CheckConnection();
-            ReadFromServer();
-            SendToServer();
+            Read();
         }
 
-        private void SendToServer()
+        public void Send(params object[] obj)
         {
-
-                while (true)
-                {
-                    byte[] message = Encoding.UTF8.GetBytes(Console.ReadLine());
-                    stream.Write(message, 0, message.Length);
-                }
-                
-
+            if (obj != null || obj[0].ToString().Length > 0)
+            {
+                string output = JsonConvert.SerializeObject(obj);
+                byte[] byteArray = Encoding.UTF8.GetBytes(output);
+                stream.Write(byteArray, 0, byteArray.Length);
+            }
         }
-        private async void ReadFromServer()
+
+        private async void Read()
         {
             await Task.Factory.StartNew(() =>
             {
+                byte[] data = new byte[256];
                 while (true)
                 {
-                    byte[] data = new byte[256];
-                    StringBuilder response = new StringBuilder();
+                    var response = new StringBuilder();
 
                     do
                     {
@@ -61,13 +58,27 @@ namespace ClientBLL
                         response.Append(Encoding.UTF8.GetString(data, 0, bytes));
                     } while (stream.DataAvailable);
 
-                    if (response.ToString() == "exit")
+                    var message = response.ToString();
+                    if (message == "Disconnect")
                     {
+                        Disconnect();
                         break;
                     }
-                    OnGetMessage.Invoke(response.ToString());
-;;                }
+                    var obj = JsonConvert.DeserializeObject<string[]>(message);
+                    InvokeSubscribe(obj);
+                }
             });
+        }
+
+        private void InvokeSubscribe(params string[] str)
+        {
+            foreach (var sub in subscriptions)
+            {
+                if (sub.Key == str[0])
+                {
+                    sub.Value.Invoke(str);
+                }
+            }
         }
 
         private async void CheckConnection()
@@ -84,6 +95,20 @@ namespace ClientBLL
                     }
                 }
             });
+        }
+
+        public void Disconnect()
+        {
+            Send("Di");
+            stream.Close();
+            tcpClient.Close();
+        }
+
+        public Subscription Subscribe(string method)
+        {
+            var subscription = new Subscription();
+            subscriptions.Add(method, subscription);
+            return subscription;
         }
     }
 }
