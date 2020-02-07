@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ServerBLL;
+﻿using ServerBLL;
+using System;
 
 namespace ServerPL
 {
@@ -12,7 +8,7 @@ namespace ServerPL
         static void Main()
         {
             ServerBL server = new ServerBL();
-            server.OnGetMessgeFromClient += ShowMessage;
+            server.OnGetMessageFromClient += ShowMessage;
             server.OnServerEvent += ShowMessage;
             server.Start();
         }
@@ -23,7 +19,11 @@ namespace ServerPL
         }
         static void ShowMessage(object[] obj)
         {
-            Console.WriteLine(obj[0].ToString());
+            foreach (var o in obj)
+            {
+                Console.Write(o.ToString() + ": ");
+            }
+            Console.WriteLine();
         }
     }
 }

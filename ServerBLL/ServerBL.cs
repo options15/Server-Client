@@ -1,6 +1,5 @@
 ﻿using Entities;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using ServerDAL;
 using System;
 using System.Collections.Generic;
@@ -8,21 +7,22 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace ServerBLL
 {
     public class ServerBL
     {
-        private TcpListener server;
-        internal static Dictionary<Client, Connection> connections;
+        private readonly TcpListener server;
+        internal  List<Connection> connections;
 
         public ServerBL(int port = 5050)
         {
             server = new TcpListener(IPAddress.Any, port);
-            connections = new Dictionary<Client, Connection>();
+            connections = new List<Connection>();
         }
 
-        public event Action<object[]> OnGetMessgeFromClient = (s) => { };
+        public event Action<object[]> OnGetMessageFromClient = (s) => { };
         public event Action<string> OnServerEvent = (s) => { };
         public event Action<Connection> OnClientConnect = (c) => { };
         public event Action<Connection> OnClientDisconnect = (c) => { };
@@ -56,7 +56,7 @@ namespace ServerBLL
         {
             foreach (var client in connections)
             {
-                DisconnectClient(client.Value);
+                DisconnectClient(client);
             }
             connections.Clear();
             server.Stop();
@@ -65,6 +65,13 @@ namespace ServerBLL
 
         private void ValidateLoginAndPassword(string login, string password, Connection connection)
         {
+            if (IsConnected(login))
+            {
+                var connect = connections.FirstOrDefault(x => x.ClientInfo.Login == login);
+                connection.SetClient(connect.ClientInfo);
+                connect.SendAsync("You were forcibly disabled.");
+                connect.Disconnect();
+            }
             var clientRepository = new ClientRepository();
             var client = clientRepository.GetByLoginAndPass(login, password);
             if (client == null)
@@ -73,46 +80,34 @@ namespace ServerBLL
             }
         }
 
-        private void RegistrationNewClient(string login, string password)
+        private void RegistrationNewClient(string login, string password, Connection sender)
         {
             var clientRepository = new ClientRepository();
             if (clientRepository.Add(login, password))
             {
-
+                sender.SendAsync("Registration", "You have successfully registered, now you can sign in.");
             }
+            else
+            {
+                sender.SendAsync("Registration", "Failure, this login is used.");
+            }
+            sender.Disconnect();
         }
 
         public void SendMessageToAllClient(string message, Connection sender)
         {
-            foreach (var client in connections.Values)
+            foreach (var client in connections)
             {
                 if (client != sender)
                 {
-                    SendAsync(client, "ChatMessage", message);
+                    client.SendAsync("ChatMessage", message);
                 }
             }
         }
 
         private bool IsConnected(string login)
         {
-            foreach (var con in connections.Keys)
-            {
-                if (con.Login == login)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        internal async void SendAsync(Connection connection, params object[] obj)
-        {
-            await Task.Factory.StartNew(() =>
-            {
-                var json = JsonConvert.SerializeObject(obj);
-                var message = Encoding.UTF8.GetBytes(json);
-                connection.stream.WriteAsync(message, 0, message.Length).ConfigureAwait(false);
-            });
+            return connections.Exists(x => x.ClientInfo.Login == login);
         }
 
         public void DisconnectClient(Connection client)
@@ -122,9 +117,25 @@ namespace ServerBLL
             OnClientDisconnect.Invoke(client);
         }
 
-        private void GettingMessage(object[] message, Connection sender)
+        private void GettingMessage(object[] data, Connection sender)
         {
-            OnGetMessgeFromClient.Invoke(message);
-        }       
+            SearchMethod(data, sender);
+            OnGetMessageFromClient.Invoke(data);
+        }
+
+        private void SearchMethod(object[]  data, Connection sender)
+        {
+            switch (data[0])
+            { 
+                case "SignIn" :
+                    RegistrationNewClient(data[1].ToString(), data[2].ToString(), sender);
+                    break;
+                case "Registration" :
+                    ValidateLoginAndPassword(data[1].ToString(), data[2].ToString(), sender);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }

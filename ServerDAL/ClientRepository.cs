@@ -1,9 +1,6 @@
-﻿using System;
+﻿using Entities;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Entities;
 
 namespace ServerDAL
 {
@@ -19,8 +16,8 @@ namespace ServerDAL
 
         public Client GetById(int id) => clientContext.Clients.FirstOrDefault(x => x.Id == id);
 
-        public Client GetByLoginAndPass(string login, string password) 
-        { 
+        public Client GetByLoginAndPass(string login, string password)
+        {
             var client = clientContext.Clients.FirstOrDefault(x => x.Login == login);
             if (client.Password == password)
             {

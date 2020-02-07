@@ -1,8 +1,6 @@
 ﻿using Entities;
 using Newtonsoft.Json;
-using ServerDAL;
 using System;
-using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,8 +9,9 @@ namespace ServerBLL
 {
     public class Connection
     {
-        private TcpClient connection;
+        private readonly TcpClient connection;
         public NetworkStream stream;
+        public Client ClientInfo { get; private set; }
 
         internal Connection(TcpClient tcpClient)
         {
@@ -22,7 +21,7 @@ namespace ServerBLL
         /// <summary>
         /// The event invoke when a message is received from the client.
         /// </summary>
-        public event Action<object[], Connection> OnGetData = (s, cc) => { };
+        public event Action<object[], Connection> OnGetData = (s, c) => { };
 
         /// <summary>
         /// Server create new async connection for new client
@@ -42,14 +41,29 @@ namespace ServerBLL
                 }
             });
         }
-       
+
         /// <summary>
         /// Close stream and disconnect client from the server
         /// </summary>
         internal void Disconnect()
         {
+            SendAsync("Disconnect");
             stream.Close();
             connection.Close();
+        }
+
+        /// <summary>
+        /// Deserialize objects and async send to client.
+        /// </summary>
+        /// <param name="obj"></param>
+        internal async void SendAsync(params object[] obj)
+        {
+            await Task.Factory.StartNew(() =>
+            {
+                var json = JsonConvert.SerializeObject(obj);
+                var message = Encoding.UTF8.GetBytes(json);
+                stream.Write(message, 0, message.Length);
+            });
         }
 
         /// <summary>
@@ -68,6 +82,14 @@ namespace ServerBLL
             } while (stream.DataAvailable);
 
             return JsonConvert.DeserializeObject<object[]>(json.ToString());
+        }
+
+        public void SetClient(Client client)
+        {
+            if (ClientInfo == null)
+            {
+                ClientInfo = client;
+            }
         }
     }
 }

@@ -22,28 +22,9 @@ namespace ClientBLL
             tcpClient = new TcpClient();
             subscriptions = new Dictionary<string, Subscription>();
         }
-        public void Connect(string login, string password, bool isRegistered = true)
-        {
-            tcpClient.Connect(ip, port);
 
-            stream = tcpClient.GetStream();
-            var method = isRegistered ? "SignIn" : "Registration";
-            Send(method, "Server", login, password);
-            CheckConnection();
-            Read();
-        }
 
-        public void Send(params object[] obj)
-        {
-            if (obj != null || obj[0].ToString().Length > 0)
-            {
-                string output = JsonConvert.SerializeObject(obj);
-                byte[] byteArray = Encoding.UTF8.GetBytes(output);
-                stream.Write(byteArray, 0, byteArray.Length);
-            }
-        }
-
-        private async void Read()
+        private async void ReadAsync()
         {
             await Task.Factory.StartNew(() =>
             {
@@ -58,13 +39,12 @@ namespace ClientBLL
                         response.Append(Encoding.UTF8.GetString(data, 0, bytes));
                     } while (stream.DataAvailable);
 
-                    var message = response.ToString();
-                    if (message == "Disconnect")
+                    var obj = JsonConvert.DeserializeObject<string[]>(response.ToString());
+                    if (obj[0] == "Disconnect")
                     {
                         Disconnect();
                         break;
                     }
-                    var obj = JsonConvert.DeserializeObject<string[]>(message);
                     InvokeSubscribe(obj);
                 }
             });
@@ -99,7 +79,7 @@ namespace ClientBLL
 
         public void Disconnect()
         {
-            Send("Di");
+            SendAsync("Disconnect");
             stream.Close();
             tcpClient.Close();
         }
@@ -110,5 +90,30 @@ namespace ClientBLL
             subscriptions.Add(method, subscription);
             return subscription;
         }
+
+        public void Connect(string login, string password, bool isRegistered = true)
+        {
+            tcpClient.Connect(ip, port);
+
+            stream = tcpClient.GetStream();
+            var method = isRegistered ? "SignIn" : "Registration";
+            SendAsync(method, login, password);
+            CheckConnection();
+            ReadAsync();
+        }
+
+        public async void SendAsync(params object[] obj)
+        {
+            await Task.Factory.StartNew(() =>
+            {
+                if (obj != null || obj[0].ToString().Length > 0)
+                {
+                    string output = JsonConvert.SerializeObject(obj);
+                    byte[] byteArray = Encoding.UTF8.GetBytes(output);
+                    stream.Write(byteArray, 0, byteArray.Length);
+                }
+            });
+        }
+
     }
 }

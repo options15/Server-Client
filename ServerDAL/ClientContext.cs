@@ -1,7 +1,5 @@
-﻿using System;
+﻿using Entities;
 using System.Data.Entity;
-using System.Linq;
-using Entities;
 
 namespace ServerDAL
 {
