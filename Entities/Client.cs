@@ -10,8 +10,11 @@ namespace Entities
         public string Login { get; set; }
         public string Password { get; set; }
 
+        public Client() { }
         public Client(string Login, string Password)
         {
+            Id = 1;
+            Name = "";
             this.Login = Login;
             this.Password = Password;
         }

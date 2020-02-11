@@ -8,7 +8,7 @@ namespace ServerPL
         static void Main()
         {
             ServerBL server = new ServerBL();
-            server.OnGetMessageFromClient += ShowMessage;
+            server.OnGetDataFromClient += ShowMessage;
             server.OnServerEvent += ShowMessage;
             server.Start();
         }

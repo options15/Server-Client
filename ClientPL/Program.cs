@@ -1,5 +1,6 @@
-﻿using ClientBLL;
+﻿using Client;
 using System;
+using System.Threading;
 
 namespace ClientPL
 {
@@ -9,38 +10,31 @@ namespace ClientPL
         {
             Console.WriteLine("If you not register, input 'r', else press enter");
 
-            switch (Console.ReadLine())
-            {
-                case "r":
-                    Registration();
-                    break;
-                default:
-                    Connect();
-                    break;
-            }
+            Connect();
         }
 
         static void Connect()
         {
-            LoginAndPassword(out string login, out string password);
-            var client = new ClientBL("127.0.0.1", 5050);
+            var client = new Connection("127.0.0.1", 5050);
             Subscription takeMessge = client.Subscribe("ChatMessage");
             takeMessge.Data += Write;
-            client.Connect(login, password);
+            client.Connect();
             while (true)
             {
-                client.SendAsync("ChatMessage", Console.ReadLine());
+                var message = Console.ReadLine();
+                if (client.IsConnected())
+                {
+                    client.SendAsync("ChatMessage", message);
+                }
+                else
+                {
+                    break;
+                }
             }
         }
         private static void Write(params object[] obj)
         {
             Console.WriteLine(obj[0].ToString() + ":" + obj[1].ToString());
-        }
-        static void Registration()
-        {
-            LoginAndPassword(out string login, out string password);
-            var client = new ClientBL("127.0.0.1", 5050);
-            client.Connect(login, password, false);
         }
 
         static void LoginAndPassword(out string login, out string password)

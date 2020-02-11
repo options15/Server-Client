@@ -5,9 +5,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ClientBLL
+namespace Client
 {
-    public class ClientBL
+    public class Connection
     {
         private TcpClient tcpClient;
         private string ip;
@@ -15,13 +15,17 @@ namespace ClientBLL
         private NetworkStream stream;
         private Dictionary<string, Subscription> subscriptions;
 
-        public ClientBL(string ip, int port)
+        public event Action OnDisconnect = () => { };
+
+        public Connection(string ip, int port)
         {
             this.ip = ip;
             this.port = port;
             tcpClient = new TcpClient();
             subscriptions = new Dictionary<string, Subscription>();
         }
+
+        public bool IsConnected() => tcpClient.Connected;
 
 
         private async void ReadAsync()
@@ -32,18 +36,25 @@ namespace ClientBLL
                 while (true)
                 {
                     var response = new StringBuilder();
-
-                    do
+                    try
                     {
-                        int bytes = stream.Read(data, 0, data.Length);
-                        response.Append(Encoding.UTF8.GetString(data, 0, bytes));
-                    } while (stream.DataAvailable);
-
-                    var obj = JsonConvert.DeserializeObject<string[]>(response.ToString());
-                    if (obj[0] == "Disconnect")
+                        do
+                        {
+                            int bytes = stream.Read(data, 0, data.Length);
+                            response.Append(Encoding.UTF8.GetString(data, 0, bytes));
+                        } while (stream.DataAvailable);
+                    }
+                    catch
                     {
                         Disconnect();
-                        break;
+                        return;
+                    }
+
+                    var obj = JsonConvert.DeserializeObject<string[]>(response.ToString());
+                    if (obj == null || obj[0] == "Disconnect")
+                    {
+                        Disconnect();
+                        return;
                     }
                     InvokeSubscribe(obj);
                 }
@@ -61,27 +72,12 @@ namespace ClientBLL
             }
         }
 
-        private async void CheckConnection()
-        {
-            await Task.Factory.StartNew(() =>
-            {
-                while (true)
-                {
-                    if (!tcpClient.Connected)
-                    {
-                        tcpClient.Close();
-                        Console.WriteLine("Server shutdown.");
-                        break;
-                    }
-                }
-            });
-        }
-
         public void Disconnect()
         {
             SendAsync("Disconnect");
             stream.Close();
             tcpClient.Close();
+            OnDisconnect.Invoke();
         }
 
         public Subscription Subscribe(string method)
@@ -91,15 +87,21 @@ namespace ClientBLL
             return subscription;
         }
 
-        public void Connect(string login, string password, bool isRegistered = true)
+        public bool Connect()
         {
-            tcpClient.Connect(ip, port);
+            try
+            {
+                tcpClient.Connect(ip, port);
+            }
+            catch
+            {
+                return false;
+            }
 
             stream = tcpClient.GetStream();
-            var method = isRegistered ? "SignIn" : "Registration";
-            SendAsync(method, login, password);
-            CheckConnection();
             ReadAsync();
+
+            return true;
         }
 
         public async void SendAsync(params object[] obj)
@@ -110,6 +112,7 @@ namespace ClientBLL
                 {
                     string output = JsonConvert.SerializeObject(obj);
                     byte[] byteArray = Encoding.UTF8.GetBytes(output);
+
                     stream.Write(byteArray, 0, byteArray.Length);
                 }
             });

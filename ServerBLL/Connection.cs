@@ -11,7 +11,6 @@ namespace ServerBLL
     {
         private readonly TcpClient connection;
         public NetworkStream stream;
-        public Client ClientInfo { get; private set; }
 
         internal Connection(TcpClient tcpClient)
         {
@@ -22,6 +21,7 @@ namespace ServerBLL
         /// The event invoke when a message is received from the client.
         /// </summary>
         public event Action<object[], Connection> OnGetData = (s, c) => { };
+        public event Action<Connection> OnDisconnect = (c) => { };
 
         /// <summary>
         /// Server create new async connection for new client
@@ -37,6 +37,12 @@ namespace ServerBLL
                 while (true)
                 {
                     var message = Read();
+                    if (message == null || message.Length == 0)
+                    {
+                        Disconnect();
+                        OnDisconnect.Invoke(this);
+                        return;
+                    }
                     OnGetData.Invoke(message, this);
                 }
             });
@@ -74,22 +80,19 @@ namespace ServerBLL
         {
             byte[] data = new byte[256];
             var json = new StringBuilder();
-
-            do
+            try
             {
-                int bytes = stream.Read(data, 0, data.Length);
-                json.Append(Encoding.UTF8.GetString(data, 0, bytes));
-            } while (stream.DataAvailable);
-
-            return JsonConvert.DeserializeObject<object[]>(json.ToString());
-        }
-
-        public void SetClient(Client client)
-        {
-            if (ClientInfo == null)
-            {
-                ClientInfo = client;
+                do
+                {
+                    int bytes = stream.Read(data, 0, data.Length);
+                    json.Append(Encoding.UTF8.GetString(data, 0, bytes));
+                } while (stream.DataAvailable);
             }
+            catch 
+            {
+                Disconnect();
+            }
+                return JsonConvert.DeserializeObject<object[]>(json.ToString());
         }
     }
 }

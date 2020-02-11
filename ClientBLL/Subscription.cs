@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ClientBLL
+namespace Client
 {
     public class Subscription
     {

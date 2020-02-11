@@ -1,9 +1,11 @@
-﻿using Entities;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Data.SqlClient;
+using System.Text;
+using System.Threading.Tasks;
+using Entities;
 
-namespace ServerDAL
+namespace ServerDAL2
 {
     public class ClientRepository
     {
@@ -19,7 +21,12 @@ namespace ServerDAL
 
         public Client GetByLoginAndPass(string login, string password)
         {
-            return clientContext.Clients.FirstOrDefault(x => x.Login == login && x.Password == password);
+            var client = clientContext.Clients.FirstOrDefault(x => x.Login == login);
+            if (client.Password == password)
+            {
+                return client;
+            }
+            return null;
         }
 
         public bool Add(string login, string password)
@@ -31,7 +38,6 @@ namespace ServerDAL
 
             var client = new Client(login, password);
             clientContext.Clients.Add(client);
-            clientContext.SaveChanges();
 
             return true;
         }
