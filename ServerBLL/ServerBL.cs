@@ -1,27 +1,21 @@
-﻿using Entities;
-using Newtonsoft.Json;
-using ServerDAL;
+﻿using ServerDAL;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace ServerBLL
 {
     public class ServerBL
     {
         private readonly TcpListener server;
-        private readonly ClientRepository clientRepository;
-        internal  List<Connection> connections;
+        internal List<Connection> connections;
 
         public ServerBL(int port = 5050)
         {
             server = new TcpListener(IPAddress.Any, port);
             connections = new List<Connection>();
-            clientRepository = new ClientRepository();
         }
 
         public event Action<object[]> OnGetDataFromClient = (s) => { };
@@ -49,6 +43,7 @@ namespace ServerBLL
                 OnServerEvent.Invoke("New client connected.");
 
                 cc.OnGetData += GettingData;
+                cc.OnDisconnect += DisconnectClient;
                 cc.Connect();
                 OnClientConnect.Invoke(cc);
             });
@@ -65,7 +60,7 @@ namespace ServerBLL
             OnServerEvent.Invoke("Server stopped.");
         }
 
-      
+
 
         public void SendAllClient(string message, Connection sender)
         {
@@ -73,26 +68,29 @@ namespace ServerBLL
             {
                 if (client != sender)
                 {
-                    client.SendAsync("ChatMessage", message);
+                    client.SendAsync(message);
                 }
             }
         }
 
-        private bool IsConnected(string login)
-        {
-            return connections.Exists(x => x.ClientInfo.Login == login);
-        }
-
         public void DisconnectClient(Connection client)
         {
-            client.Disconnect();
+            if (client.IsConnected())
+            {
+                client.Disconnect();
+            }
+
             client.OnGetData -= GettingData;
+            client.OnDisconnect -= DisconnectClient;
+
+            connections.Remove(client);
             OnClientDisconnect.Invoke(client);
         }
+
 
         private void GettingData(object[] data, Connection sender)
         {
             OnGetDataFromClient.Invoke(data);
-        }   
+        }
     }
 }

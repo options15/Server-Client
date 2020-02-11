@@ -10,7 +10,13 @@ namespace ServerPL
             ServerBL server = new ServerBL();
             server.OnGetDataFromClient += ShowMessage;
             server.OnServerEvent += ShowMessage;
+            server.OnClientDisconnect += Server_OnClientDisconnect;
             server.Start();
+        }
+
+        private static void Server_OnClientDisconnect(Connection obj)
+        {
+            Console.WriteLine("Client disconnect");
         }
 
         static void ShowMessage(string message)

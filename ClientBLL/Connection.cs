@@ -57,6 +57,7 @@ namespace Client
                         return;
                     }
                     InvokeSubscribe(obj);
+
                 }
             });
         }
@@ -74,7 +75,6 @@ namespace Client
 
         public void Disconnect()
         {
-            SendAsync("Disconnect");
             stream.Close();
             tcpClient.Close();
             OnDisconnect.Invoke();
@@ -106,16 +106,25 @@ namespace Client
 
         public async void SendAsync(params object[] obj)
         {
-            await Task.Factory.StartNew(() =>
+            if (tcpClient.Connected)
             {
-                if (obj != null || obj[0].ToString().Length > 0)
+                await Task.Factory.StartNew(() =>
                 {
-                    string output = JsonConvert.SerializeObject(obj);
-                    byte[] byteArray = Encoding.UTF8.GetBytes(output);
-
-                    stream.Write(byteArray, 0, byteArray.Length);
-                }
-            });
+                    if (obj != null || obj[0].ToString().Length > 0)
+                    {
+                        string output = JsonConvert.SerializeObject(obj);
+                        byte[] byteArray = Encoding.UTF8.GetBytes(output);
+                        try
+                        {
+                            stream.Write(byteArray, 0, byteArray.Length);
+                        }
+                        catch
+                        {
+                            Disconnect();
+                        }
+                    }
+                });
+            }
         }
 
     }

@@ -1,5 +1,4 @@
-﻿using Entities;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Net.Sockets;
 using System.Text;
@@ -10,7 +9,7 @@ namespace ServerBLL
     public class Connection
     {
         private readonly TcpClient connection;
-        public NetworkStream stream;
+        private NetworkStream stream;
 
         internal Connection(TcpClient tcpClient)
         {
@@ -53,10 +52,12 @@ namespace ServerBLL
         /// </summary>
         internal void Disconnect()
         {
-            SendAsync("Disconnect");
             stream.Close();
             connection.Close();
+            OnDisconnect.Invoke(this);
         }
+
+        internal bool IsConnected() => connection.Connected;
 
         /// <summary>
         /// Deserialize objects and async send to client.
@@ -64,12 +65,22 @@ namespace ServerBLL
         /// <param name="obj"></param>
         internal async void SendAsync(params object[] obj)
         {
-            await Task.Factory.StartNew(() =>
+            if (connection.Connected)
             {
-                var json = JsonConvert.SerializeObject(obj);
-                var message = Encoding.UTF8.GetBytes(json);
-                stream.Write(message, 0, message.Length);
-            });
+                await Task.Factory.StartNew(() =>
+                {
+                    var json = JsonConvert.SerializeObject(obj);
+                    var message = Encoding.UTF8.GetBytes(json);
+                    try
+                    {
+                        stream.Write(message, 0, message.Length);
+                    }
+                    catch
+                    {
+                        Disconnect();
+                    }
+                });
+            }
         }
 
         /// <summary>
@@ -88,11 +99,11 @@ namespace ServerBLL
                     json.Append(Encoding.UTF8.GetString(data, 0, bytes));
                 } while (stream.DataAvailable);
             }
-            catch 
+            catch
             {
                 Disconnect();
             }
-                return JsonConvert.DeserializeObject<object[]>(json.ToString());
+            return JsonConvert.DeserializeObject<object[]>(json.ToString());
         }
     }
 }

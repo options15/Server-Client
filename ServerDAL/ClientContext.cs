@@ -1,6 +1,5 @@
 ﻿using Entities;
 using System.Data.Entity;
-using System.Data.SqlClient;
 
 namespace ServerDAL
 {
