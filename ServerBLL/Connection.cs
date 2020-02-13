@@ -6,21 +6,21 @@ using System.Threading.Tasks;
 
 namespace ServerBLL
 {
-    public class Connection
+    public sealed class Connection
     {
         private readonly TcpClient connection;
         private NetworkStream stream;
 
         internal Connection(TcpClient tcpClient)
         {
-            this.connection = tcpClient;
+            connection = tcpClient;
         }
 
         /// <summary>
         /// The event invoke when a message is received from the client.
         /// </summary>
-        public event Action<object[], Connection> OnGetData = (s, c) => { };
-        public event Action<Connection> OnDisconnect = (c) => { };
+        internal event Action<object[], Connection> OnGetData = (s, c) => { };
+        internal event Action<Connection> OnDisconnect = (c) => { };
 
         /// <summary>
         /// Server create new async connection for new client
@@ -57,6 +57,10 @@ namespace ServerBLL
             OnDisconnect.Invoke(this);
         }
 
+        /// <summary>
+        /// Show client is connected.
+        /// </summary>
+        /// <returns></returns>
         internal bool IsConnected() => connection.Connected;
 
         /// <summary>

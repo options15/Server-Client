@@ -7,8 +7,6 @@ namespace ClientPL
     {
         static void Main()
         {
-            Console.WriteLine("If you not register, input 'r', else press enter");
-
             Connect();
         }
 
