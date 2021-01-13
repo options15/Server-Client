@@ -5,15 +5,17 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace Client
 {
-    public class Connection
+    public class Connection 
     {
-        private TcpClient tcpClient;
+        private readonly TcpClient tcpClient;
         private string ip;
         private int port;
         private NetworkStream stream;
         private Dictionary<string, Subscription> subscriptions;
+
 
         public event Action OnDisconnect = () => { };
 
@@ -26,7 +28,6 @@ namespace Client
         }
 
         public bool IsConnected() => tcpClient.Connected;
-
 
         private async void ReadAsync()
         {
@@ -57,7 +58,6 @@ namespace Client
                         return;
                     }
                     InvokeSubscribe(obj);
-
                 }
             });
         }
@@ -112,7 +112,7 @@ namespace Client
                 {
                     if (obj != null || obj[0].ToString().Length > 0)
                     {
-                        string output = JsonConvert.SerializeObject(obj);
+                        string output = JsonConvert.SerializeObject( obj );
                         byte[] byteArray = Encoding.UTF8.GetBytes(output);
                         try
                         {

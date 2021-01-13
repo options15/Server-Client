@@ -13,7 +13,7 @@ namespace ClientPL
         static void Connect()
         {
             var client = new Connection("127.0.0.1", 5050);
-            Subscription takeMessge = client.Subscribe("ChatMessage");
+            Subscription takeMessge = client.Subscribe("SendMessage");
             takeMessge.Data += Write;
             client.Connect();
             while (true)
@@ -21,7 +21,7 @@ namespace ClientPL
                 var message = Console.ReadLine();
                 if (client.IsConnected())
                 {
-                    client.SendAsync("ChatMessage", message);
+                    client.SendAsync("MyHub", "SendMessage", message);
                 }
                 else
                 {

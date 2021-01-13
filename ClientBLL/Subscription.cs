@@ -8,9 +8,9 @@ namespace Client
 
         internal Subscription() { }
 
-        internal void Invoke(params object[] obj)
+        internal void Invoke(params object[] data)
         {
-            Data.Invoke(obj);
+            Data.Invoke(data);
         }
     }
 }
